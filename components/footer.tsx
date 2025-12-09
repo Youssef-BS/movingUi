@@ -9,7 +9,7 @@ export default function Footer() {
 
   const translations = {
     de: {
-      company: "K&A Entrumplenung",
+      company: "K&A Entrümpelung",
       description: "Professionelle Umzugs- und Reinigungsdienste in ganz Deutschland.",
       services: "Dienstleistungen",
       moving: "Umzug",
@@ -20,7 +20,7 @@ export default function Footer() {
       team: "Team",
       reviews: "Bewertungen",
       contact: "Kontakt",
-      copyright: "© 2025 K&A Entrumplenung. Alle Rechte vorbehalten.",
+      copyright: "© 2025 K&A Entrümpelung. Alle Rechte vorbehalten.",
     },
     en: {
       company: "K&A Moving Services",
@@ -42,11 +42,11 @@ export default function Footer() {
 
   return (
     <footer className="bg-slate-900 text-white py-12 animate-fade-in">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="site-container">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company */}
           <div className="animate-slide-in-up">
-            <h3 className="font-bold text-lg mb-4">{t.company}</h3>
+            <h3 className="mb-4">{t.company}</h3>
             <p className="text-slate-300">{t.description}</p>
           </div>
 
@@ -113,7 +113,7 @@ export default function Footer() {
 
         {/* Social & Copyright */}
         <div className="mt-8 pt-8 border-t border-slate-700 flex flex-col md:flex-row justify-between items-center animate-fade-in">
-          <p className="text-slate-400">{t.copyright}</p>
+          <p className="text-slate-400 text-sm">{t.copyright}</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Facebook className="cursor-pointer hover:text-white transition duration-300" size={20} />
             <Instagram className="cursor-pointer hover:text-white transition duration-300" size={20} />

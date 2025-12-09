@@ -1,13 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, Navigation } from "lucide-react"
 import { translations, type Language } from "@/lib/translations"
-
-const L = dynamic(() => import("leaflet"), { ssr: false })
 
 interface LocationPoint {
   lat: number
@@ -17,11 +14,20 @@ interface LocationPoint {
 
 interface MapBookingProps {
   language?: Language
+  // optional external selections: when parent/client sets these, map will show them
+  initialPickup?: LocationPoint | null
+  initialDelivery?: LocationPoint | null
+  onLocationsChange?: (pickup: LocationPoint | null, delivery: LocationPoint | null) => void
 }
 
-export function MapBooking({ language = "de" }: MapBookingProps) {
+export function MapBooking({
+  language = "de",
+  initialPickup = null,
+  initialDelivery = null,
+  onLocationsChange,
+}: MapBookingProps) {
   const t = translations[language]
-  const mapContainer = useRef<HTMLDivElement>(null)
+  const mapContainer = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<any>(null)
   const [pickupLocation, setPickupLocation] = useState<LocationPoint | null>(null)
   const [deliveryLocation, setDeliveryLocation] = useState<LocationPoint | null>(null)
@@ -32,79 +38,147 @@ export function MapBooking({ language = "de" }: MapBookingProps) {
   const deliveryMarker = useRef<any>(null)
   const routeLine = useRef<any>(null)
 
-  // Initialize map
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [lockMarkers, setLockMarkers] = useState(false)
+  const [showCoordsOnMarker, setShowCoordsOnMarker] = useState(true)
+
+  const [manualPickupLat, setManualPickupLat] = useState<string>("")
+  const [manualPickupLng, setManualPickupLng] = useState<string>("")
+  const [manualDeliveryLat, setManualDeliveryLat] = useState<string>("")
+  const [manualDeliveryLng, setManualDeliveryLng] = useState<string>("")
+
+  // Helper to create/update markers programmatically
+  async function setMarker(type: "pickup" | "delivery", lat: number, lng: number, address?: string) {
+    const leaflet = await import("leaflet")
+    if (!mapRef.current) return
+
+    const iconUrl =
+      type === "pickup"
+        ? "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png"
+        : "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
+
+    const marker = leaflet.marker([lat, lng], {
+      icon: leaflet.icon({
+        iconUrl,
+        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      }),
+    }).addTo(mapRef.current)
+
+    const popupText = address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+    marker.bindPopup(popupText)
+
+    if (type === "pickup") {
+      if (pickupMarker.current) try { mapRef.current.removeLayer(pickupMarker.current) } catch {}
+      pickupMarker.current = marker
+      setPickupLocation({ lat, lng, address })
+      setManualPickupLat(lat.toString())
+      setManualPickupLng(lng.toString())
+    } else {
+      if (deliveryMarker.current) try { mapRef.current.removeLayer(deliveryMarker.current) } catch {}
+      deliveryMarker.current = marker
+      setDeliveryLocation({ lat, lng, address })
+      setManualDeliveryLat(lat.toString())
+      setManualDeliveryLng(lng.toString())
+    }
+  }
+
+  function clearPoints() {
+    if (pickupMarker.current && mapRef.current) try { mapRef.current.removeLayer(pickupMarker.current) } catch {}
+    if (deliveryMarker.current && mapRef.current) try { mapRef.current.removeLayer(deliveryMarker.current) } catch {}
+    if (routeLine.current && mapRef.current) try { mapRef.current.removeLayer(routeLine.current) } catch {}
+    pickupMarker.current = null
+    deliveryMarker.current = null
+    routeLine.current = null
+    setPickupLocation(null)
+    setDeliveryLocation(null)
+    setDistance(null)
+    setEstimatedPrice(null)
+    setManualPickupLat("")
+    setManualPickupLng("")
+    setManualDeliveryLat("")
+    setManualDeliveryLng("")
+  }
+
+  // Initialize map and click handler
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
-    ;(async () => {
-      const L = await import("leaflet")
-      const map = L.map(mapContainer.current!).setView([51.1657, 10.4515], 6)
+    let mounted = true
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    ;(async () => {
+      const leaflet = await import("leaflet")
+      const map = leaflet.map(mapContainer.current!).setView([51.1657, 10.4515], 6)
+
+      leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
         maxZoom: 19,
       }).addTo(map)
 
       mapRef.current = map
 
+      // Click handler: create/update pickup/delivery depending on state
       map.on("click", (e: any) => {
-        if (!activeMode) return
+        if (lockMarkers) return
 
         const { lat, lng } = e.latlng
         const location: LocationPoint = { lat, lng }
 
-        if (activeMode === "pickup") {
-          setPickupLocation(location)
-          if (pickupMarker.current) map.removeLayer(pickupMarker.current)
-          pickupMarker.current = L.marker([lat, lng], {
-            icon: L.icon({
-              iconUrl:
-                "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-              shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-              popupAnchor: [1, -34],
-              shadowSize: [41, 41],
-            }),
-          })
-            .addTo(map)
-            .bindPopup(t.pickupLocation)
-        } else {
-          setDeliveryLocation(location)
-          if (deliveryMarker.current) map.removeLayer(deliveryMarker.current)
-          deliveryMarker.current = L.marker([lat, lng], {
-            icon: L.icon({
-              iconUrl:
-                "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-              shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-              popupAnchor: [1, -34],
-              shadowSize: [41, 41],
-            }),
-          })
-            .addTo(map)
-            .bindPopup(t.deliveryLocation)
-        }
+        const target: "pickup" | "delivery" = activeMode
+          ? activeMode
+          : pickupLocation == null
+          ? "pickup"
+          : deliveryLocation == null
+          ? "delivery"
+          : "pickup"
 
-        setActiveMode(null)
+        // Use setMarker for consistency
+        setMarker(target, lat, lng, undefined)
+
+        if (activeMode) setActiveMode(null)
       })
+
+      if (!mounted) return
     })()
 
     return () => {
+      mounted = false
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
       }
     }
-  }, [activeMode, t])
+  }, [lockMarkers, activeMode, pickupLocation, deliveryLocation])
 
-  // Calculate distance and price
+  // Reflect external initial props
   useEffect(() => {
-    if (pickupLocation && deliveryLocation && mapRef.current) {
-      const dist = L.latLng(pickupLocation.lat, pickupLocation.lng).distanceTo(
-        L.latLng(deliveryLocation.lat, deliveryLocation.lng),
-      )
+    if (initialPickup) setMarker("pickup", initialPickup.lat, initialPickup.lng, initialPickup.address)
+  }, [initialPickup])
+
+  useEffect(() => {
+    if (initialDelivery) setMarker("delivery", initialDelivery.lat, initialDelivery.lng, initialDelivery.address)
+  }, [initialDelivery])
+
+  // Notify parent when locations change
+  useEffect(() => {
+    if (onLocationsChange) onLocationsChange(pickupLocation, deliveryLocation)
+  }, [pickupLocation, deliveryLocation, onLocationsChange])
+
+  // Calculate distance and price when both points exist
+  useEffect(() => {
+    if (!pickupLocation || !deliveryLocation || !mapRef.current) return
+
+    let canceled = false
+    ;(async () => {
+      const leaflet = await import("leaflet")
+      const dist = leaflet
+        .latLng(pickupLocation.lat, pickupLocation.lng)
+        .distanceTo(leaflet.latLng(deliveryLocation.lat, deliveryLocation.lng))
+
       const distanceInKm = dist / 1000
+      if (canceled) return
       setDistance(Number.parseFloat(distanceInKm.toFixed(2)))
 
       const basePrice = 50
@@ -113,8 +187,8 @@ export function MapBooking({ language = "de" }: MapBookingProps) {
       setEstimatedPrice(Number.parseFloat(calculatedPrice.toFixed(2)))
 
       // Draw line between points
-      if (routeLine.current) mapRef.current.removeLayer(routeLine.current)
-      routeLine.current = L.polyline(
+      if (routeLine.current) try { mapRef.current.removeLayer(routeLine.current) } catch {}
+      routeLine.current = leaflet.polyline(
         [
           [pickupLocation.lat, pickupLocation.lng],
           [deliveryLocation.lat, deliveryLocation.lng],
@@ -123,11 +197,15 @@ export function MapBooking({ language = "de" }: MapBookingProps) {
       ).addTo(mapRef.current)
 
       // Fit map to bounds
-      const bounds = L.latLngBounds(
+      const bounds = leaflet.latLngBounds(
         [pickupLocation.lat, pickupLocation.lng],
         [deliveryLocation.lat, deliveryLocation.lng],
       )
       mapRef.current.fitBounds(bounds, { padding: [50, 50] })
+    })()
+
+    return () => {
+      canceled = true
     }
   }, [pickupLocation, deliveryLocation])
 
@@ -151,6 +229,97 @@ export function MapBooking({ language = "de" }: MapBookingProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">{t.mapBooking}</p>
+              </div>
+
+              {/* Advanced settings panel */}
+              <div className="mt-2 p-3 bg-muted/5 rounded-md border border-border">
+                <button
+                  className="text-sm font-medium underline"
+                  onClick={() => setShowAdvanced((s) => !s)}
+                >
+                  {t.advancedSettings}
+                </button>
+
+                {showAdvanced && (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-center gap-4">
+                      <label className="text-sm">{t.lockMarkers}</label>
+                      <input type="checkbox" checked={lockMarkers} onChange={() => setLockMarkers((s) => !s)} />
+                      <label className="text-sm ml-4">{t.showCoords}</label>
+                      <input type="checkbox" checked={showCoordsOnMarker} onChange={() => setShowCoordsOnMarker((s) => !s)} />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold">{t.pickupLocation}</div>
+                        <div className="flex gap-2">
+                          <input
+                            className="w-1/2 border px-2 py-1 rounded"
+                            placeholder={t.lat}
+                            value={manualPickupLat}
+                            onChange={(e) => setManualPickupLat(e.target.value)}
+                          />
+                          <input
+                            className="w-1/2 border px-2 py-1 rounded"
+                            placeholder={t.lng}
+                            value={manualPickupLng}
+                            onChange={(e) => setManualPickupLng(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <button
+                            className="btn-outline mt-2"
+                            onClick={() => {
+                              const lat = parseFloat(manualPickupLat)
+                              const lng = parseFloat(manualPickupLng)
+                              if (!isNaN(lat) && !isNaN(lng)) setMarker("pickup", lat, lng)
+                            }}
+                          >
+                            {t.update}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold">{t.deliveryLocation}</div>
+                        <div className="flex gap-2">
+                          <input
+                            className="w-1/2 border px-2 py-1 rounded"
+                            placeholder={t.lat}
+                            value={manualDeliveryLat}
+                            onChange={(e) => setManualDeliveryLat(e.target.value)}
+                          />
+                          <input
+                            className="w-1/2 border px-2 py-1 rounded"
+                            placeholder={t.lng}
+                            value={manualDeliveryLng}
+                            onChange={(e) => setManualDeliveryLng(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <button
+                            className="btn-outline mt-2"
+                            onClick={() => {
+                              const lat = parseFloat(manualDeliveryLat)
+                              const lng = parseFloat(manualDeliveryLng)
+                              if (!isNaN(lat) && !isNaN(lng)) setMarker("delivery", lat, lng)
+                            }}
+                          >
+                            {t.update}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t flex items-center gap-3">
+                      <button className="btn-outline" onClick={() => clearPoints()}>{t.clearPoints}</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Pickup Location */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold">{t.pickupLocation}</label>
@@ -190,7 +359,7 @@ export function MapBooking({ language = "de" }: MapBookingProps) {
                   </div>
                   <div className="bg-accent/10 p-3 rounded-lg">
                     <p className="text-sm text-muted-foreground">{t.estimatedPrice}</p>
-                    <p className="text-2xl font-bold text-accent">${estimatedPrice}</p>
+                    <p className="text-2xl font-bold text-accent">€{estimatedPrice}</p>
                   </div>
                 </div>
               )}

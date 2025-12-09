@@ -227,3 +227,38 @@
     background-size: 1000px 100%;
   }
 }
+
+/* Professional layout & components */
+@layer components {
+  /* central site container for consistent gutters */
+  .site-container {
+    @apply mx-auto px-4 sm:px-6 lg:px-8;
+    max-width: 1200px;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-shadow shadow-sm bg-primary text-primary-foreground hover:shadow-md;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium border border-border bg-transparent hover:bg-secondary;
+  }
+
+  /* Headings for a consistent typographic scale */
+  h1 {
+    @apply text-3xl md:text-4xl font-extrabold leading-tight;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl font-bold leading-snug;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl font-semibold;
+  }
+
+  p {
+    @apply text-base md:text-lg text-muted-foreground;
+  }
+}

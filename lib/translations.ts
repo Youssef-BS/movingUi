@@ -9,7 +9,7 @@ export const translations = {
     contact: "Kontakt",
 
     // Hero Section
-    heroTitle: "Dein vertrauenswürdiger Umzugs- und Reinigungspartner",
+    heroTitle: "Dein vertrauenswürdiger Umzugs- und Reinigungs­partner",
     heroDescription:
       "Professionelle Dienstleistungen mit persönlichem Touch. Wir machen deinen Umzug stressfrei und einfach.",
     bookNow: "Jetzt Buchen",
@@ -33,6 +33,15 @@ export const translations = {
 
     // Map Booking
     mapBooking: "Interaktive Buchung mit Kartentool",
+    advancedSettings: "Erweiterte Einstellungen",
+    clearPoints: "Punkte löschen",
+    lockMarkers: "Marker sperren",
+    showCoords: "Koordinaten anzeigen",
+    lat: "Breitengrad (lat)",
+    lng: "Längengrad (lng)",
+    update: "Aktualisieren",
+    showPoints: "Standorte anzeigen",
+    hidePoints: "Standorte verbergen",
     pickupLocation: "Abholort wählen",
     deliveryLocation: "Lieferort wählen",
     searchAddress: "Adresse suchen...",
@@ -47,7 +56,7 @@ export const translations = {
     // Testimonials
     whatCustomersSay: "Was unsere Kunden sagen",
     testimonial1: "Ausgezeichneter Service! Das Team war professionell und kümmerte sich großartig um unsere Sachen.",
-    testimonial2: "Sehr effizienter Umzugsprozess. Ich empfehle K&A Entrumplenung sehr weiter!",
+    testimonial2: "Sehr effizienter Umzugsprozess. Ich empfehle K&A Entrümpelung sehr weiter!",
     testimonial3: "Der Reinigungsservice war gründlich und der Preis sehr fair.",
 
     // CTA
@@ -56,7 +65,7 @@ export const translations = {
     bookYourService: "Buche deinen Service",
 
     // Footer
-    footer: "© 2025 K&A Entrumplenung. Alle Rechte vorbehalten.",
+    footer: "© 2025 K&A Entrümpelung. Alle Rechte vorbehalten.",
   },
   en: {
     // Navigation & Headers
@@ -91,6 +100,15 @@ export const translations = {
 
     // Map Booking
     mapBooking: "Interactive Booking with Map",
+    advancedSettings: "Advanced settings",
+    clearPoints: "Clear points",
+    lockMarkers: "Lock markers",
+    showCoords: "Show coordinates",
+    lat: "Latitude (lat)",
+    lng: "Longitude (lng)",
+    update: "Update",
+    showPoints: "Show service points",
+    hidePoints: "Hide service points",
     pickupLocation: "Choose Pickup Location",
     deliveryLocation: "Choose Delivery Location",
     searchAddress: "Search address...",
